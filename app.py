@@ -384,7 +384,10 @@ def signup_page():
             st.error("All fields are required.")
             return
         ok = save_user(username.strip(), password, role, name.strip(), phone.strip())
-        st.success("Account created! You can now log in.") if ok else st.error("Username already exists!")
+        if ok:
+            st.success("Account created! You can now log in.")
+        else:
+            st.error("Username already exists!")
 
 def login_page():
     st.markdown("""
