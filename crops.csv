@@ -1,0 +1,4 @@
+farmer_id,farmer_name,location,crop_name,quantity,phone_number,image
+farmer1,divya,"Karnataka, Shimoga",Kulthi,60,7019221501,images\farmer1_Kulthi_60_1763275022.jpg
+farmer2,db,"West Bengal, Nadia",Mustard,34,8523748924,images\farmer2_Mustard_34_1763288075.jpg
+farmer1,divya,"Punjab, Mansa",green gram,50,7019221501,images\farmer1_green gram_50_1763289113.jpg

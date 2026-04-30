@@ -1,0 +1,4 @@
+request_id,username,role,location,destination,mode,phone,timestamp
+farmer1_1763275075,farmer1,farmer,"Karnataka,Shimoga","Karnataka,Banglore",Tractor,7019221501,2025-11-16T12:07:55.111057
+buyer1_1763284592,buyer1,buyer,Delhi,Kerala,Lorry,7345678998,2025-11-16T14:46:32.405084
+farmer1_1763289141,farmer1,farmer,banglore,punjab,Auto,7019221501,2025-11-16T16:02:21.497674
