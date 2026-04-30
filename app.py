@@ -752,10 +752,10 @@ if role_selection in ["farmer", "buyer"]:
                 st.write(f"**Crop:** {post.get('crop_name','')} | **Qty:** {post.get('quantity','')} kg | **Location:** {post.get('location','')} | **Phone:** {post.get('phone_number','N/A')}")
                 img = post.get("image","")
                 if isinstance(img, str) and img and os.path.exists(img):
-                try:
-                    st.image(img, width=200)
-                except Exception:
-                    st.write("_Image not available_")
+                    try:
+                        st.image(img, width=200)
+                    except Exception:
+                        st.write("_Image not available_")
                 st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.info("No crops available currently.")
