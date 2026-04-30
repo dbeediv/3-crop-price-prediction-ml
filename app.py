@@ -384,10 +384,7 @@ def signup_page():
             st.error("All fields are required.")
             return
         ok = save_user(username.strip(), password, role, name.strip(), phone.strip())
-        if ok:
-            st.success("Account created! You can now log in.")
-        else:
-            st.error("Username already exists!")
+        st.success("Account created! You can now log in.") if ok else st.error("Username already exists!")
 
 def login_page():
     st.markdown("""
@@ -540,262 +537,262 @@ if role_selection in ["farmer", "buyer"]:
     last_known_price = hist["Modal Price"].iloc[-1]
     recommendation, perc_change = get_recommendation(last_known_price, pred_price, role_selection)
 
-# ----------------------------------------
-# Farmer Dashboard
-# ----------------------------------------
-if role_selection == "farmer":
-    st.markdown("<h1 style='text-align:center; margin:6px 0 8px 0;'>🌾 Farmer Dashboard</h1>", unsafe_allow_html=True)
-
-    # Prediction results
-    st.markdown("<div style='background:#f0e6d2; padding:16px; border-radius:10px;'>", unsafe_allow_html=True)
+    # ----------------------------------------
+    # Farmer Dashboard
+    # ----------------------------------------
+    if role_selection == "farmer":
+        st.markdown("<h1 style='text-align:center; margin:6px 0 8px 0;'>🌾 Farmer Dashboard</h1>", unsafe_allow_html=True)
     
-    # Algorithm info card
-    st.markdown(f"""
-    <div class='algo-card'>
-        <div class='algo-title'>🤖 {algo_name}</div>
-        <div class='small'>{algo_desc}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.success(f"Predicted **{crop}** price on **{future_date}**: ₹{pred_price:,.2f}")
-    st.info(f"Recommendation: **{recommendation}**")
+        # Prediction results
+        st.markdown("<div style='background:#f0e6d2; padding:16px; border-radius:10px;'>", unsafe_allow_html=True)
+        
+        # Algorithm info card
+        st.markdown(f"""
+        <div class='algo-card'>
+            <div class='algo-title'>🤖 {algo_name}</div>
+            <div class='small'>{algo_desc}</div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Model metrics
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Predicted Price", f"₹{pred_price:,.2f}")
-    with col2:
-        st.metric("Price Change", f"{perc_change:+.2f}%")
-    with col3:
-        if mae is not None:
-            st.metric("Model MAE (test set)", f"₹{mae:,.2f}")
+        st.success(f"Predicted **{crop}** price on **{future_date}**: ₹{pred_price:,.2f}")
+        st.info(f"Recommendation: **{recommendation}**")
+        
+        # Model metrics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Predicted Price", f"₹{pred_price:,.2f}")
+        with col2:
+            st.metric("Price Change", f"{perc_change:+.2f}%")
+        with col3:
+            if mae is not None:
+                st.metric("Model MAE (test set)", f"₹{mae:,.2f}")
+        
+        if r2 is not None:
+            st.caption(f"Model R² Score on test data: {r2:.3f} | Algorithm: {algo_name}")
     
-    if r2 is not None:
-        st.caption(f"Model R² Score on test data: {r2:.3f} | Algorithm: {algo_name}")
-
-    # Compare all 3 algorithms
-    if st.checkbox("📊 Compare all 3 algorithms side by side"):
-        with st.spinner("Running all 3 models..."):
-            rf_p, rf_mae, rf_r2 = predict_random_forest(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
-            gb_p, gb_mae, gb_r2 = predict_gradient_boosting(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
-            poly_p, poly_mae, poly_r2 = predict_polynomial(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
-
-        comparison = pd.DataFrame([
-            {"Algorithm": "🌲 Random Forest", "Predicted Price (₹)": f"{rf_p:,.2f}" if rf_p else "N/A",
-             "Test MAE (₹)": f"{rf_mae:,.2f}" if rf_mae else "N/A", "Test R²": f"{rf_r2:.3f}" if rf_r2 else "N/A"},
-            {"Algorithm": "⚡ Gradient Boosting", "Predicted Price (₹)": f"{gb_p:,.2f}" if gb_p else "N/A",
-             "Test MAE (₹)": f"{gb_mae:,.2f}" if gb_mae else "N/A", "Test R²": f"{gb_r2:.3f}" if gb_r2 else "N/A"},
-            {"Algorithm": "📐 Polynomial Regression", "Predicted Price (₹)": f"{poly_p:,.2f}" if poly_p else "N/A",
-             "Test MAE (₹)": f"{poly_mae:,.2f}" if poly_mae else "N/A", "Test R²": f"{poly_r2:.3f}" if poly_r2 else "N/A"},
-        ])
-        st.dataframe(comparison, use_container_width=True)
-        st.caption("Lower MAE = better accuracy | Higher R² = better fit (max 1.0)")
-
-    out_df = pd.DataFrame([{
-        "State": state, "District": district, "Crop": crop,
-        "date_of_prediction": future_date, "predicted_price": pred_price,
-        "algorithm": algo_name, "model_mae": mae, "model_r2": r2
-    }])
-    st.download_button("Download prediction CSV",
-                       StringIO(out_df.to_csv(index=False)).getvalue(),
-                       file_name=f"{crop}_prediction_{future_date}.csv", mime="text/csv")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # Post Crop
-    st.markdown("<div style='background:#fff2e6; padding:12px; border-radius:8px; margin-top:16px;'>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center; color:#5D4037;'>Post your Crop for Sale</h3>", unsafe_allow_html=True)
-    crop_name = st.text_input("Crop Name", key="post_crop_name")
-    quantity = st.number_input("Quantity (kg)", min_value=1, key="post_quantity")
-    phone_number = st.text_input("Phone Number", value=st.session_state.get("phone",""), key="post_phone")
-    crop_image = st.file_uploader("Upload Crop Image (Optional)", type=["jpg","jpeg","png"], key="post_image")
-    if st.button("Post Crop", key="post_button"):
-        if crop_name and quantity and phone_number:
-            image_path = ""
-            if crop_image:
-                ts = int(datetime.now().timestamp())
-                fname = f"{st.session_state['username']}_{crop_name}_{quantity}_{ts}.jpg"
-                image_path = os.path.join("images", fname)
-                with open(image_path, "wb") as f:
-                    f.write(crop_image.getbuffer())
-            post_data = {
-                "farmer_id": st.session_state["username"],
-                "farmer_name": st.session_state.get("name","Farmer"),
-                "location": f"{state}, {district}",
-                "crop_name": crop_name, "quantity": quantity,
-                "phone_number": phone_number, "image": image_path
-            }
-            st.session_state["farmer_posts"].append(post_data)
-            save_farmer_posts(st.session_state["farmer_posts"])
-            st.success(f"{crop_name} posted successfully!")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # Your posts
-    st.markdown("<div style='background:#e6f7ff; padding:12px; border-radius:8px; margin-top:16px;'>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center; color:#5D4037;'>Your Posted Crops</h3>", unsafe_allow_html=True)
-    st.session_state["farmer_posts"] = load_farmer_posts()
-    own_posts = [p for p in st.session_state["farmer_posts"] if p.get("farmer_id") == st.session_state["username"]]
-    if own_posts:
-        for idx, post in enumerate(own_posts):
-            st.markdown("<div style='background:var(--card); padding:10px; border-radius:8px; margin-bottom:8px;'>", unsafe_allow_html=True)
-            st.write(f"**Crop:** {post.get('crop_name','')} | **Qty:** {post.get('quantity','')} kg | **Phone:** {post.get('phone_number','N/A')} | **Loc:** {post.get('location','')}")
-            img = post.get("image","")
-            if isinstance(img, str) and img and os.path.exists(img):
-                st.image(img, width=200)
-            if st.button("Remove Post", key=f"remove_post_{idx}"):
-                st.session_state["farmer_posts"].remove(post)
+        # Compare all 3 algorithms
+        if st.checkbox("📊 Compare all 3 algorithms side by side"):
+            with st.spinner("Running all 3 models..."):
+                rf_p, rf_mae, rf_r2 = predict_random_forest(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
+                gb_p, gb_mae, gb_r2 = predict_gradient_boosting(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
+                poly_p, poly_mae, poly_r2 = predict_polynomial(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
+    
+            comparison = pd.DataFrame([
+                {"Algorithm": "🌲 Random Forest", "Predicted Price (₹)": f"{rf_p:,.2f}" if rf_p else "N/A",
+                 "Test MAE (₹)": f"{rf_mae:,.2f}" if rf_mae else "N/A", "Test R²": f"{rf_r2:.3f}" if rf_r2 else "N/A"},
+                {"Algorithm": "⚡ Gradient Boosting", "Predicted Price (₹)": f"{gb_p:,.2f}" if gb_p else "N/A",
+                 "Test MAE (₹)": f"{gb_mae:,.2f}" if gb_mae else "N/A", "Test R²": f"{gb_r2:.3f}" if gb_r2 else "N/A"},
+                {"Algorithm": "📐 Polynomial Regression", "Predicted Price (₹)": f"{poly_p:,.2f}" if poly_p else "N/A",
+                 "Test MAE (₹)": f"{poly_mae:,.2f}" if poly_mae else "N/A", "Test R²": f"{poly_r2:.3f}" if poly_r2 else "N/A"},
+            ])
+            st.dataframe(comparison, use_container_width=True)
+            st.caption("Lower MAE = better accuracy | Higher R² = better fit (max 1.0)")
+    
+        out_df = pd.DataFrame([{
+            "State": state, "District": district, "Crop": crop,
+            "date_of_prediction": future_date, "predicted_price": pred_price,
+            "algorithm": algo_name, "model_mae": mae, "model_r2": r2
+        }])
+        st.download_button("Download prediction CSV",
+                           StringIO(out_df.to_csv(index=False)).getvalue(),
+                           file_name=f"{crop}_prediction_{future_date}.csv", mime="text/csv")
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+        # Post Crop
+        st.markdown("<div style='background:#fff2e6; padding:12px; border-radius:8px; margin-top:16px;'>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align:center; color:#5D4037;'>Post your Crop for Sale</h3>", unsafe_allow_html=True)
+        crop_name = st.text_input("Crop Name", key="post_crop_name")
+        quantity = st.number_input("Quantity (kg)", min_value=1, key="post_quantity")
+        phone_number = st.text_input("Phone Number", value=st.session_state.get("phone",""), key="post_phone")
+        crop_image = st.file_uploader("Upload Crop Image (Optional)", type=["jpg","jpeg","png"], key="post_image")
+        if st.button("Post Crop", key="post_button"):
+            if crop_name and quantity and phone_number:
+                image_path = ""
+                if crop_image:
+                    ts = int(datetime.now().timestamp())
+                    fname = f"{st.session_state['username']}_{crop_name}_{quantity}_{ts}.jpg"
+                    image_path = os.path.join("images", fname)
+                    with open(image_path, "wb") as f:
+                        f.write(crop_image.getbuffer())
+                post_data = {
+                    "farmer_id": st.session_state["username"],
+                    "farmer_name": st.session_state.get("name","Farmer"),
+                    "location": f"{state}, {district}",
+                    "crop_name": crop_name, "quantity": quantity,
+                    "phone_number": phone_number, "image": image_path
+                }
+                st.session_state["farmer_posts"].append(post_data)
                 save_farmer_posts(st.session_state["farmer_posts"])
-                st.success("Post removed."); st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
-    else:
-        st.info("You have not posted any crops yet.")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # Delivery
-    st.markdown("<div style='background:#f9e6ff; padding:12px; border-radius:8px; margin-top:16px;'>", unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align:center; color:#3a2b22;'>Delivery Made Easy</h2>", unsafe_allow_html=True)
-    if st.button("Need Delivery", key="need_delivery_farmer"):
-        st.session_state["show_delivery_form_farmer"] = True
-    if st.session_state["show_delivery_form_farmer"]:
-        with st.form("delivery_form_farmer", clear_on_submit=False):
-            loc = st.text_input("Your location", key="df_loc")
-            dest = st.text_input("Destination", key="df_dest")
-            mode = st.selectbox("Mode of transport", ["Bike","Auto","Tractor","Tempo","Lorry"], key="df_mode")
-            phone = st.text_input("Phone number", value=st.session_state.get("phone",""), key="df_phone")
-            submitted = st.form_submit_button("Submit Delivery Request")
-            cancel = st.form_submit_button("Cancel")
-            if submitted:
-                req = {
-                    "request_id": f"{st.session_state['username']}_{int(datetime.now().timestamp())}",
-                    "username": st.session_state["username"], "role": st.session_state["role"],
-                    "location": loc, "destination": dest, "mode": mode,
-                    "phone": phone, "timestamp": datetime.now().isoformat()
-                }
-                cur = load_delivery_requests(); cur.append(req)
-                st.session_state["delivery_requests"] = cur
-                save_delivery_requests(cur)
-                st.success("Delivery request submitted.")
-                st.session_state["show_delivery_form_farmer"] = False; st.rerun()
-            if cancel:
-                st.session_state["show_delivery_form_farmer"] = False; st.rerun()
-    st.markdown("<h3 style='text-align:center; color:#5D4037;'>Your delivery requests</h3>", unsafe_allow_html=True)
-    st.session_state["delivery_requests"] = load_delivery_requests()
-    my_reqs = [r for r in st.session_state["delivery_requests"] if r.get("username") == st.session_state["username"]]
-    for r in my_reqs:
-        st.markdown("<div style='background:var(--card); padding:10px; border-radius:8px; margin-bottom:8px;'>", unsafe_allow_html=True)
-        st.write(f"**{r.get('request_id')}** | {r.get('location')} → {r.get('destination')} | {r.get('mode')} | {r.get('phone')}")
-        if st.button("Remove Request", key=f"remove_del_{r.get('request_id')}"):
-            cur = [x for x in load_delivery_requests() if x.get("request_id") != r.get("request_id")]
-            st.session_state["delivery_requests"] = cur; save_delivery_requests(cur)
-            st.success("Removed."); st.rerun()
+                st.success(f"{crop_name} posted successfully!")
         st.markdown("</div>", unsafe_allow_html=True)
-    if not my_reqs:
-        st.info("No delivery requests yet.")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ----------------------------------------
-# Buyer Dashboard
-# ----------------------------------------
-elif role_selection == "buyer":
-    st.markdown("<h1 style='text-align:center; margin:6px 0 8px 0;'>🛒 Buyer Dashboard</h1>", unsafe_allow_html=True)
-
-    st.markdown("<div style='background:#fff4e6; padding:16px; border-radius:10px;'>", unsafe_allow_html=True)
-    st.markdown(f"""
-    <div class='algo-card'>
-        <div class='algo-title'>🤖 {algo_name}</div>
-        <div class='small'>{algo_desc}</div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.success(f"Predicted **{crop}** price on **{future_date}**: ₹{pred_price:,.2f}")
-    st.info(f"Recommendation: **{recommendation}**")
-    col1, col2, col3 = st.columns(3)
-    with col1: st.metric("Predicted Price", f"₹{pred_price:,.2f}")
-    with col2: st.metric("Price Change", f"{perc_change:+.2f}%")
-    with col3:
-        if mae is not None: st.metric("Model MAE", f"₹{mae:,.2f}")
-    if r2 is not None:
-        st.caption(f"R² Score: {r2:.3f} | Algorithm: {algo_name}")
-
-    if st.checkbox("📊 Compare all 3 algorithms"):
-        with st.spinner("Running all 3 models..."):
-            rf_p, rf_mae, rf_r2 = predict_random_forest(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
-            gb_p, gb_mae, gb_r2 = predict_gradient_boosting(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
-            poly_p, poly_mae, poly_r2 = predict_polynomial(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
-        comparison = pd.DataFrame([
-            {"Algorithm": "🌲 Random Forest", "Predicted Price (₹)": f"{rf_p:,.2f}" if rf_p else "N/A",
-             "Test MAE (₹)": f"{rf_mae:,.2f}" if rf_mae else "N/A", "Test R²": f"{rf_r2:.3f}" if rf_r2 else "N/A"},
-            {"Algorithm": "⚡ Gradient Boosting", "Predicted Price (₹)": f"{gb_p:,.2f}" if gb_p else "N/A",
-             "Test MAE (₹)": f"{gb_mae:,.2f}" if gb_mae else "N/A", "Test R²": f"{gb_r2:.3f}" if gb_r2 else "N/A"},
-            {"Algorithm": "📐 Polynomial Regression", "Predicted Price (₹)": f"{poly_p:,.2f}" if poly_p else "N/A",
-             "Test MAE (₹)": f"{poly_mae:,.2f}" if poly_mae else "N/A", "Test R²": f"{poly_r2:.3f}" if poly_r2 else "N/A"},
-        ])
-        st.dataframe(comparison, use_container_width=True)
-
-    out_df = pd.DataFrame([{
-        "State": state, "District": district, "Crop": crop,
-        "date_of_prediction": future_date, "predicted_price": pred_price,
-        "algorithm": algo_name
-    }])
-    st.download_button("Download prediction CSV",
-                       StringIO(out_df.to_csv(index=False)).getvalue(),
-                       file_name=f"{crop}_prediction_{future_date}.csv", mime="text/csv")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # Available crops
-    st.markdown("<div style='background:#f0f0ff; padding:12px; border-radius:8px; margin-top:16px;'>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center; color:#5D4037;'>Available Crops for Purchase</h3>", unsafe_allow_html=True)
-    st.session_state["farmer_posts"] = load_farmer_posts()
-    if st.session_state["farmer_posts"]:
-        for post in st.session_state["farmer_posts"]:
+    
+        # Your posts
+        st.markdown("<div style='background:#e6f7ff; padding:12px; border-radius:8px; margin-top:16px;'>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align:center; color:#5D4037;'>Your Posted Crops</h3>", unsafe_allow_html=True)
+        st.session_state["farmer_posts"] = load_farmer_posts()
+        own_posts = [p for p in st.session_state["farmer_posts"] if p.get("farmer_id") == st.session_state["username"]]
+        if own_posts:
+            for idx, post in enumerate(own_posts):
+                st.markdown("<div style='background:var(--card); padding:10px; border-radius:8px; margin-bottom:8px;'>", unsafe_allow_html=True)
+                st.write(f"**Crop:** {post.get('crop_name','')} | **Qty:** {post.get('quantity','')} kg | **Phone:** {post.get('phone_number','N/A')} | **Loc:** {post.get('location','')}")
+                img = post.get("image","")
+                if isinstance(img, str) and img and os.path.exists(img):
+                    st.image(img, width=200)
+                if st.button("Remove Post", key=f"remove_post_{idx}"):
+                    st.session_state["farmer_posts"].remove(post)
+                    save_farmer_posts(st.session_state["farmer_posts"])
+                    st.success("Post removed."); st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.info("You have not posted any crops yet.")
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+        # Delivery
+        st.markdown("<div style='background:#f9e6ff; padding:12px; border-radius:8px; margin-top:16px;'>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align:center; color:#3a2b22;'>Delivery Made Easy</h2>", unsafe_allow_html=True)
+        if st.button("Need Delivery", key="need_delivery_farmer"):
+            st.session_state["show_delivery_form_farmer"] = True
+        if st.session_state["show_delivery_form_farmer"]:
+            with st.form("delivery_form_farmer", clear_on_submit=False):
+                loc = st.text_input("Your location", key="df_loc")
+                dest = st.text_input("Destination", key="df_dest")
+                mode = st.selectbox("Mode of transport", ["Bike","Auto","Tractor","Tempo","Lorry"], key="df_mode")
+                phone = st.text_input("Phone number", value=st.session_state.get("phone",""), key="df_phone")
+                submitted = st.form_submit_button("Submit Delivery Request")
+                cancel = st.form_submit_button("Cancel")
+                if submitted:
+                    req = {
+                        "request_id": f"{st.session_state['username']}_{int(datetime.now().timestamp())}",
+                        "username": st.session_state["username"], "role": st.session_state["role"],
+                        "location": loc, "destination": dest, "mode": mode,
+                        "phone": phone, "timestamp": datetime.now().isoformat()
+                    }
+                    cur = load_delivery_requests(); cur.append(req)
+                    st.session_state["delivery_requests"] = cur
+                    save_delivery_requests(cur)
+                    st.success("Delivery request submitted.")
+                    st.session_state["show_delivery_form_farmer"] = False; st.rerun()
+                if cancel:
+                    st.session_state["show_delivery_form_farmer"] = False; st.rerun()
+        st.markdown("<h3 style='text-align:center; color:#5D4037;'>Your delivery requests</h3>", unsafe_allow_html=True)
+        st.session_state["delivery_requests"] = load_delivery_requests()
+        my_reqs = [r for r in st.session_state["delivery_requests"] if r.get("username") == st.session_state["username"]]
+        for r in my_reqs:
             st.markdown("<div style='background:var(--card); padding:10px; border-radius:8px; margin-bottom:8px;'>", unsafe_allow_html=True)
-            st.write(f"**Crop:** {post.get('crop_name','')} | **Qty:** {post.get('quantity','')} kg | **Location:** {post.get('location','')} | **Phone:** {post.get('phone_number','N/A')}")
-            img = post.get("image","")
-            if isinstance(img, str) and img and os.path.exists(img):
-                st.image(img, width=200)
-            st.markdown("</div>", unsafe_allow_html=True)
-    else:
-        st.info("No crops available currently.")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # Delivery
-    st.markdown("<div style='background:#f9e6ff; padding:12px; border-radius:8px; margin-top:16px;'>", unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align:center; color:#3a2b22;'>Delivery Made Easy</h2>", unsafe_allow_html=True)
-    if st.button("Need Delivery", key="need_delivery_buyer"):
-        st.session_state["show_delivery_form_buyer"] = True
-    if st.session_state["show_delivery_form_buyer"]:
-        with st.form("delivery_form_buyer", clear_on_submit=False):
-            loc = st.text_input("Your location", key="db_loc")
-            dest = st.text_input("Destination", key="db_dest")
-            mode = st.selectbox("Mode of transport", ["Bike","Auto","Tractor","Tempo","Lorry"], key="db_mode")
-            phone = st.text_input("Phone number", value=st.session_state.get("phone",""), key="db_phone")
-            submitted = st.form_submit_button("Submit Delivery Request")
-            cancel = st.form_submit_button("Cancel")
-            if submitted:
-                req = {
-                    "request_id": f"{st.session_state['username']}_{int(datetime.now().timestamp())}",
-                    "username": st.session_state["username"], "role": st.session_state["role"],
-                    "location": loc, "destination": dest, "mode": mode,
-                    "phone": phone, "timestamp": datetime.now().isoformat()
-                }
-                cur = load_delivery_requests(); cur.append(req)
+            st.write(f"**{r.get('request_id')}** | {r.get('location')} → {r.get('destination')} | {r.get('mode')} | {r.get('phone')}")
+            if st.button("Remove Request", key=f"remove_del_{r.get('request_id')}"):
+                cur = [x for x in load_delivery_requests() if x.get("request_id") != r.get("request_id")]
                 st.session_state["delivery_requests"] = cur; save_delivery_requests(cur)
-                st.success("Delivery request submitted.")
-                st.session_state["show_delivery_form_buyer"] = False; st.rerun()
-            if cancel:
-                st.session_state["show_delivery_form_buyer"] = False; st.rerun()
-    my_reqs = [r for r in load_delivery_requests() if r.get("username") == st.session_state["username"]]
-    for r in my_reqs:
-        st.markdown("<div style='background:var(--card); padding:10px; border-radius:8px; margin-bottom:8px;'>", unsafe_allow_html=True)
-        st.write(f"**{r.get('request_id')}** | {r.get('location')} → {r.get('destination')} | {r.get('mode')}")
-        if st.button("Remove Request", key=f"remove_del_buyer_{r.get('request_id')}"):
-            cur = [x for x in load_delivery_requests() if x.get("request_id") != r.get("request_id")]
-            st.session_state["delivery_requests"] = cur; save_delivery_requests(cur)
-            st.success("Removed."); st.rerun()
+                st.success("Removed."); st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+        if not my_reqs:
+            st.info("No delivery requests yet.")
         st.markdown("</div>", unsafe_allow_html=True)
-    if not my_reqs:
-        st.info("No delivery requests yet.")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ----------------------------------------
+    
+    # ----------------------------------------
+    # Buyer Dashboard
+    # ----------------------------------------
+    elif role_selection == "buyer":
+        st.markdown("<h1 style='text-align:center; margin:6px 0 8px 0;'>🛒 Buyer Dashboard</h1>", unsafe_allow_html=True)
+    
+        st.markdown("<div style='background:#fff4e6; padding:16px; border-radius:10px;'>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='algo-card'>
+            <div class='algo-title'>🤖 {algo_name}</div>
+            <div class='small'>{algo_desc}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.success(f"Predicted **{crop}** price on **{future_date}**: ₹{pred_price:,.2f}")
+        st.info(f"Recommendation: **{recommendation}**")
+        col1, col2, col3 = st.columns(3)
+        with col1: st.metric("Predicted Price", f"₹{pred_price:,.2f}")
+        with col2: st.metric("Price Change", f"{perc_change:+.2f}%")
+        with col3:
+            if mae is not None: st.metric("Model MAE", f"₹{mae:,.2f}")
+        if r2 is not None:
+            st.caption(f"R² Score: {r2:.3f} | Algorithm: {algo_name}")
+    
+        if st.checkbox("📊 Compare all 3 algorithms"):
+            with st.spinner("Running all 3 models..."):
+                rf_p, rf_mae, rf_r2 = predict_random_forest(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
+                gb_p, gb_mae, gb_r2 = predict_gradient_boosting(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
+                poly_p, poly_mae, poly_r2 = predict_polynomial(crop_key, target_date_str, X_tuple, y_tuple, t0_str)
+            comparison = pd.DataFrame([
+                {"Algorithm": "🌲 Random Forest", "Predicted Price (₹)": f"{rf_p:,.2f}" if rf_p else "N/A",
+                 "Test MAE (₹)": f"{rf_mae:,.2f}" if rf_mae else "N/A", "Test R²": f"{rf_r2:.3f}" if rf_r2 else "N/A"},
+                {"Algorithm": "⚡ Gradient Boosting", "Predicted Price (₹)": f"{gb_p:,.2f}" if gb_p else "N/A",
+                 "Test MAE (₹)": f"{gb_mae:,.2f}" if gb_mae else "N/A", "Test R²": f"{gb_r2:.3f}" if gb_r2 else "N/A"},
+                {"Algorithm": "📐 Polynomial Regression", "Predicted Price (₹)": f"{poly_p:,.2f}" if poly_p else "N/A",
+                 "Test MAE (₹)": f"{poly_mae:,.2f}" if poly_mae else "N/A", "Test R²": f"{poly_r2:.3f}" if poly_r2 else "N/A"},
+            ])
+            st.dataframe(comparison, use_container_width=True)
+    
+        out_df = pd.DataFrame([{
+            "State": state, "District": district, "Crop": crop,
+            "date_of_prediction": future_date, "predicted_price": pred_price,
+            "algorithm": algo_name
+        }])
+        st.download_button("Download prediction CSV",
+                           StringIO(out_df.to_csv(index=False)).getvalue(),
+                           file_name=f"{crop}_prediction_{future_date}.csv", mime="text/csv")
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+        # Available crops
+        st.markdown("<div style='background:#f0f0ff; padding:12px; border-radius:8px; margin-top:16px;'>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align:center; color:#5D4037;'>Available Crops for Purchase</h3>", unsafe_allow_html=True)
+        st.session_state["farmer_posts"] = load_farmer_posts()
+        if st.session_state["farmer_posts"]:
+            for post in st.session_state["farmer_posts"]:
+                st.markdown("<div style='background:var(--card); padding:10px; border-radius:8px; margin-bottom:8px;'>", unsafe_allow_html=True)
+                st.write(f"**Crop:** {post.get('crop_name','')} | **Qty:** {post.get('quantity','')} kg | **Location:** {post.get('location','')} | **Phone:** {post.get('phone_number','N/A')}")
+                img = post.get("image","")
+                if isinstance(img, str) and img and os.path.exists(img):
+                    st.image(img, width=200)
+                st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.info("No crops available currently.")
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+        # Delivery
+        st.markdown("<div style='background:#f9e6ff; padding:12px; border-radius:8px; margin-top:16px;'>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align:center; color:#3a2b22;'>Delivery Made Easy</h2>", unsafe_allow_html=True)
+        if st.button("Need Delivery", key="need_delivery_buyer"):
+            st.session_state["show_delivery_form_buyer"] = True
+        if st.session_state["show_delivery_form_buyer"]:
+            with st.form("delivery_form_buyer", clear_on_submit=False):
+                loc = st.text_input("Your location", key="db_loc")
+                dest = st.text_input("Destination", key="db_dest")
+                mode = st.selectbox("Mode of transport", ["Bike","Auto","Tractor","Tempo","Lorry"], key="db_mode")
+                phone = st.text_input("Phone number", value=st.session_state.get("phone",""), key="db_phone")
+                submitted = st.form_submit_button("Submit Delivery Request")
+                cancel = st.form_submit_button("Cancel")
+                if submitted:
+                    req = {
+                        "request_id": f"{st.session_state['username']}_{int(datetime.now().timestamp())}",
+                        "username": st.session_state["username"], "role": st.session_state["role"],
+                        "location": loc, "destination": dest, "mode": mode,
+                        "phone": phone, "timestamp": datetime.now().isoformat()
+                    }
+                    cur = load_delivery_requests(); cur.append(req)
+                    st.session_state["delivery_requests"] = cur; save_delivery_requests(cur)
+                    st.success("Delivery request submitted.")
+                    st.session_state["show_delivery_form_buyer"] = False; st.rerun()
+                if cancel:
+                    st.session_state["show_delivery_form_buyer"] = False; st.rerun()
+        my_reqs = [r for r in load_delivery_requests() if r.get("username") == st.session_state["username"]]
+        for r in my_reqs:
+            st.markdown("<div style='background:var(--card); padding:10px; border-radius:8px; margin-bottom:8px;'>", unsafe_allow_html=True)
+            st.write(f"**{r.get('request_id')}** | {r.get('location')} → {r.get('destination')} | {r.get('mode')}")
+            if st.button("Remove Request", key=f"remove_del_buyer_{r.get('request_id')}"):
+                cur = [x for x in load_delivery_requests() if x.get("request_id") != r.get("request_id")]
+                st.session_state["delivery_requests"] = cur; save_delivery_requests(cur)
+                st.success("Removed."); st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+        if not my_reqs:
+            st.info("No delivery requests yet.")
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    # ----------------------------------------
 # Delivery Dashboard
 # ----------------------------------------
 elif role_selection == "delivery":
