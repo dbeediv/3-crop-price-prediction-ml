@@ -639,10 +639,10 @@ if role_selection in ["farmer", "buyer"]:
                 st.write(f"**Crop:** {post.get('crop_name','')} | **Qty:** {post.get('quantity','')} kg | **Phone:** {post.get('phone_number','N/A')} | **Loc:** {post.get('location','')}")
                 img = post.get("image","")
                 if isinstance(img, str) and img and os.path.exists(img):
-                try:
-                    st.image(img, width=200)
-                except Exception:
-                    st.write("_Image not available_")
+                    try:
+                        st.image(img, width=200)
+                    except Exception:
+                        st.write("_Image not available_")
                 if st.button("Remove Post", key=f"remove_post_{idx}"):
                     st.session_state["farmer_posts"].remove(post)
                     save_farmer_posts(st.session_state["farmer_posts"])
